@@ -1,12 +1,12 @@
 #include <errno.h>
-#include<stdio.h>
-#include<string.h>
-#include<unistd.h>
-#include<sys/types.h>
-#include<sys/socket.h>
-#include<stdlib.h>
-#include<netinet/in.h>
-#include<arpa/inet.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <stdlib.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <muduo/base/Logging.h>
 
@@ -15,9 +15,11 @@
 using namespace lr;
 using namespace muduo;
 
-LogReceiverServer::LogReceiverServer(int flushInterval,
+LogReceiverServer::LogReceiverServer(const std::string& baseDir,
+									 int flushInterval,
 									 int writerThreadNum)
-	: flushInterval_(flushInterval),
+	: baseDir_(baseDir),
+	  flushInterval_(flushInterval),
 	  writerThreadNum_(writerThreadNum),
 	  udpSockFD_(-1),
 	  running_(false),

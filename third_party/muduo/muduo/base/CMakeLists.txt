@@ -15,6 +15,7 @@ set(base_SRCS
   ThreadPool.cc
   AsyncLogFile.cc
   AsyncLogWriter.cc
+  RollFile.cc
   )
 
 add_library(muduo_base ${base_SRCS})

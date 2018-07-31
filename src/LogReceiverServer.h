@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <map>
+#include <string>
 
 #include <boost/noncopyable.hpp>
 
@@ -18,7 +19,8 @@ namespace lr {
 class LogReceiverServer : boost::noncopyable
 {
 public:
-	LogReceiverServer(int flushInterval,
+	LogReceiverServer(const std::string& baseDir,
+					  int flushInterval,
 					  int writerThreadNum);
 	~LogReceiverServer()
 	{
@@ -38,8 +40,10 @@ private:
 
   	void threadFunc();
 
+  	std::string baseDir_;
 	int flushInterval_;
 	int writerThreadNum_;
+
 	int udpSockFD_;
 
 	bool running_;

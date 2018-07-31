@@ -7,7 +7,7 @@
 #include <muduo/base/Mutex.h>
 #include <muduo/base/Thread.h>
 #include <muduo/base/LogStream.h>
-#include <muduo/base/LogFile.h>
+#include <muduo/base/RollFile.h>
 #include <muduo/base/AsyncLogWriter.h>
 
 #include <boost/enable_shared_from_this.hpp>
@@ -27,7 +27,7 @@ class AsyncLogFile : boost::noncopyable,
   AsyncLogFile(const string& basename,
                off_t rollSize,
                AsyncLogWriter* writer,
-               int flushInterval = 10);
+               int flushInterval = 3);
 
   ~AsyncLogFile();
 
@@ -54,7 +54,7 @@ class AsyncLogFile : boost::noncopyable,
   BufferVector buffers_;
   BufferPtr newBuffer1_;
   BufferPtr newBuffer2_;
-  muduo::LogFile output_;
+  muduo::RollFile output_;
   BufferVector buffersToWrite_;
   time_t lastFlushTime_;
   size_t idxInWriter_;

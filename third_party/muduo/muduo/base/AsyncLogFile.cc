@@ -1,5 +1,5 @@
 #include <muduo/base/AsyncLogFile.h>
-#include <muduo/base/LogFile.h>
+#include <muduo/base/RollFile.h>
 #include <muduo/base/Timestamp.h>
 
 #include <stdio.h>

@@ -26,7 +26,7 @@ class AsyncLogWriter : boost::noncopyable
 {
  public:
 
-  AsyncLogWriter(int flushInterval = 10);
+  AsyncLogWriter(int flushInterval = 3);
 
   ~AsyncLogWriter()
   {
