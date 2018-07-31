@@ -80,6 +80,7 @@ void AsyncLogWriter::notify(size_t idxInWriter)
 void AsyncLogWriter::threadFunc()
 {
   assert(running_ == true);
+  latch_.countDown();
 
   while (running_)
   {
