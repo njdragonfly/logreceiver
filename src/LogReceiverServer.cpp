@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
 #include <muduo/base/Logging.h>
 
@@ -160,7 +162,8 @@ void LogReceiverServer::process(const char* pktBuf, const int pktLen, const stru
 	}
 
 	muduo::string moduleName(pktBuf, commaPos);
-	muduo::string logFileMapKey = moduleName.append("-").append(clientIp);
+	muduo::string logFileMapKey(moduleName);
+	logFileMapKey.append("-").append(clientIp);
 
 	AsyncLogFilePtr logFile;
 	LogFileMap::iterator it = logFileMap_.find(logFileMapKey);
@@ -169,8 +172,29 @@ void LogReceiverServer::process(const char* pktBuf, const int pktLen, const stru
 	}
 	else
 	{
-		muduo::string logFileName = baseDir_ + logFileMapKey;
-		logFile = AsyncLogFilePtr(new AsyncLogFile(logFileName, 500*1000*1000, 3));
+		muduo::string moduleLogDir = baseDir_ + moduleName + "/";
+		DIR* tmpDirPtr = NULL;
+		if ( (tmpDirPtr = opendir(moduleLogDir.c_str())) == NULL )
+		{
+			LOG_DEBUG << "Module Directory not exists: " << moduleLogDir;
+			if (mkdir(moduleLogDir.c_str(), 0755) < 0)
+			{
+				LOG_ERROR << "Create Module Directory Failed: " << moduleLogDir << ", errno: " << errno;
+				return;
+			}
+			else
+			{
+				LOG_INFO << "Create Module Directory SUCC: " << moduleLogDir;
+			}
+		}
+		else
+		{
+			closedir(tmpDirPtr);
+			tmpDirPtr = NULL;
+		}
+
+		muduo::string logFileName = moduleLogDir + logFileMapKey;
+		logFile = AsyncLogFilePtr(new AsyncLogFile(logFileName, 500*1000*1000, flushInterval_));
 
 		AsyncLogWriterPtr usedWriter = logWriters_[rand() % logWriters_.size()];
 		logFile->attachToLogWriter(usedWriter);

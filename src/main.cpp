@@ -1,4 +1,5 @@
 #include <signal.h>
+#include <dirent.h>
 
 #include <iostream>
 
@@ -91,9 +92,32 @@ int main(int argc, const char *argv[])
 
 	const char* bindIP = argv[1];
 	int bindPort = atoi(argv[2]);
-	const char* baseDir = argv[3];
+	muduo::string baseDir(argv[3]);
 	int flushInterval = atoi(argv[4]);
 	int writerThreadNum = atoi(argv[5]);
+
+	if (baseDir.empty())
+	{
+		LOG_ERROR << "base_dir is empty";
+		return 0;
+	}
+
+	if (baseDir[baseDir.length() - 1] != '/')
+	{
+		baseDir.append("/");
+	}
+
+	DIR* baseDirPtr = NULL;
+	if ( (baseDirPtr = opendir(baseDir.c_str())) == NULL )
+	{
+		LOG_ERROR << "Directory not exists: " << baseDir;
+		return 0;
+	}
+	else
+	{
+		closedir(baseDirPtr);
+		baseDirPtr = NULL;
+	}
 
 	LogReceiverServer server(baseDir, flushInterval, writerThreadNum);
 
