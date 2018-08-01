@@ -83,10 +83,22 @@ void AskToQuit()
 
 int main(int argc, const char *argv[])
 {
-	LogReceiverServer server("./logs/", 3, 2);
+	if (argc < 6)
+	{
+		LOG_ERROR << "Usage: log_receiver ip port base_dir flush_interval thread_num";
+		return 0;
+	}
+
+	const char* bindIP = argv[1];
+	int bindPort = atoi(argv[2]);
+	const char* baseDir = argv[3];
+	int flushInterval = atoi(argv[4]);
+	int writerThreadNum = atoi(argv[5]);
+
+	LogReceiverServer server(baseDir, flushInterval, writerThreadNum);
 
 	LOG_INFO << "log_receiver starting...";
-	int ret = server.start("0.0.0.0", 30003);
+	int ret = server.start(bindIP, bindPort);
 	LOG_INFO << "log_receiver started, ret: " << ret;
 
 	while (!IsAskedToQuit())
