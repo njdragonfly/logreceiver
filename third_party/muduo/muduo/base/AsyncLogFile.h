@@ -25,14 +25,16 @@ class AsyncLogFile : boost::noncopyable,
  public:
 
   AsyncLogFile(const string& basename,
-               off_t rollSize,
-               AsyncLogWriter* writer,
+               off_t rollSize = 500*1000*1000,
                int flushInterval = 3);
 
   ~AsyncLogFile();
 
+  void attachToLogWriter(const muduo::AsyncLogWriterPtr& writer);
   void append(const char* logline, int len);
   void flush(bool force = false);
+
+  time_t getLastAppendTime();
 
  private:
 
@@ -58,6 +60,7 @@ class AsyncLogFile : boost::noncopyable,
   BufferVector buffersToWrite_;
   time_t lastFlushTime_;
   size_t idxInWriter_;
+  time_t lastAppendTime_;
 };
 
 }

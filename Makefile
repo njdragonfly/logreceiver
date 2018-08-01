@@ -15,15 +15,24 @@ LR_DIRS = ./src
 LR_SOURCES = $(foreach d,$(LR_DIRS),$(wildcard $(addprefix $(d)/*,$(SRCEXTS))))
 LR_OBJS = $(addsuffix .o, $(basename $(LR_SOURCES)))
 
+TEST_DIRS = ./tests
+TEST_SOURCES = $(foreach d,$(TEST_DIRS),$(wildcard $(addprefix $(d)/*,$(SRCEXTS))))
+TEST_OBJS = $(addsuffix .o, $(basename $(TEST_SOURCES)))
+
 LINK_OPTIONS = -Xlinker -lmuduo_base -lpthread -ldl -lz -lrt
 
 .PHONY:all
-all: log_receiver
+all: log_receiver log_client
 
 .PHONY:log_receiver
 log_receiver: $(LR_OBJS) third_party_lib
 	@echo "Linking $@"
 	$(CXX) $(LR_OBJS) -o $@ $(LIBPATHS) $(LINK_OPTIONS)
+
+.PHONY:log_client
+log_client: $(TEST_OBJS) third_party_lib
+	@echo "Linking $@"
+	$(CXX) $(TEST_OBJS) -o $@ $(LIBPATHS) $(LINK_OPTIONS)
 
 .PHONY:third_party_lib
 third_party_lib: muduo_lib

@@ -83,10 +83,10 @@ void AskToQuit()
 
 int main(int argc, const char *argv[])
 {
-	LogReceiverServer server("./logs/", 10, 4);
+	LogReceiverServer server("./logs/", 3, 2);
 
 	LOG_INFO << "log_receiver starting...";
-	int ret = server.start("127.0.0.1", 30003);
+	int ret = server.start("0.0.0.0", 30003);
 	LOG_INFO << "log_receiver started, ret: " << ret;
 
 	while (!IsAskedToQuit())

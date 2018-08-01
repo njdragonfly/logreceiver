@@ -15,7 +15,7 @@
 using namespace lr;
 using namespace muduo;
 
-LogReceiverServer::LogReceiverServer(const std::string& baseDir,
+LogReceiverServer::LogReceiverServer(const muduo::string& baseDir,
 									 int flushInterval,
 									 int writerThreadNum)
 	: baseDir_(baseDir),
@@ -27,6 +27,7 @@ LogReceiverServer::LogReceiverServer(const std::string& baseDir,
       latch_(1)
 {
 	logWriters_.reserve(writerThreadNum);
+	srand((unsigned int) time(NULL));
 }
 
 int LogReceiverServer::start(const char *ip, const int port)
@@ -42,8 +43,9 @@ int LogReceiverServer::start(const char *ip, const int port)
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_port = htons(port);
 	serverAddr.sin_addr.s_addr = inet_addr(ip);
+	socklen_t serverAddrLen = sizeof(serverAddr);
 
-	if (bind(udpSockFD_, (struct sockaddr *) &serverAddr, sizeof(serverAddr)) < 0)
+	if (bind(udpSockFD_, (struct sockaddr *) &serverAddr, serverAddrLen) < 0)
 	{
 		LOG_ERROR << "UDP socket bind failed, errno: " << errno;
 		return -2;
@@ -52,6 +54,8 @@ int LogReceiverServer::start(const char *ip, const int port)
 	struct timeval sendTimeout = {0, 100000}; //100ms
     if (setsockopt(udpSockFD_, SOL_SOCKET, SO_SNDTIMEO, &sendTimeout, sizeof(sendTimeout)) < 0)
     {
+    	close(udpSockFD_);
+		udpSockFD_ = -1;
     	LOG_ERROR << "set socekt send timeout failed, errno: " << errno;
 		return -3;
     }
@@ -59,6 +63,8 @@ int LogReceiverServer::start(const char *ip, const int port)
     struct timeval recvTimeout = {10, 0}; //10s
     if (setsockopt(udpSockFD_, SOL_SOCKET, SO_RCVTIMEO, &recvTimeout, sizeof(recvTimeout)) < 0)
     {
+    	close(udpSockFD_);
+		udpSockFD_ = -1;
     	LOG_ERROR << "set socekt recv timeout failed, errno: " << errno;
 		return -4;
     }
@@ -83,17 +89,34 @@ void LogReceiverServer::threadFunc()
 	latch_.countDown();
 
 	char recvBuf[65536];
+	struct sockaddr_in clientAddr;
+	socklen_t clientAddrLen = sizeof(clientAddr);
+	bzero(&clientAddr, sizeof(clientAddr));
+
+	int runCount = 0;
+	time_t lastCheckTime = time(NULL);
 
 	while (running_)
 	{
-		struct sockaddr_in clientAddr;
-		socklen_t clientAddrLen;
+		if (runCount++ >= kCheckIntervalRunCnt)
+		{
+			runCount = 0;
+			time_t now = time(NULL);
+			if (now - lastCheckTime >= kCheckIntervalSeconds)
+			{
+				LOG_INFO << "begin clear expired log file...";
+
+				clearExpiredLogFile(now);
+				lastCheckTime = now;
+			}
+		}
+
 		int recvNum = recvfrom(udpSockFD_, recvBuf, sizeof(recvBuf), 0, (struct sockaddr*) &clientAddr, &clientAddrLen);
 		if (recvNum < 0)
 		{
 			if (errno == EAGAIN)
 			{
-				LOG_ERROR << "recvfrom timeout, errno: " << errno;
+				LOG_DEBUG << "recvfrom timeout, errno: " << errno;
 				continue;
 			}
 			else
@@ -104,27 +127,90 @@ void LogReceiverServer::threadFunc()
 		}
 		else if (recvNum == 0)
 		{
-			LOG_ERROR << "recvfrom ret 0";
+			LOG_ERROR << "recvfrom ret 0, socket may shutdown";
 			break;
 		}
 
-		LOG_INFO << "recv packet!";
+		LOG_DEBUG << "recv packet from: " << inet_ntoa(clientAddr.sin_addr);
+
+		process(recvBuf, recvNum, clientAddr, clientAddrLen);
 	}
 
 	close(udpSockFD_);
 	udpSockFD_ = -1;
 }
 
+void LogReceiverServer::process(const char* pktBuf, const int pktLen, const struct sockaddr_in& clientAddr, socklen_t clientAddrLen)
+{
+	const char* clientIp = (const char*) inet_ntoa(clientAddr.sin_addr);
+
+	int commaPos = 0;
+	for (; commaPos < pktLen; ++commaPos)
+	{
+		if (pktBuf[commaPos] == ',')
+		{
+			break;
+		}
+	}
+
+	if (commaPos == 0 || commaPos > 100 || commaPos >= pktLen - 1)
+	{
+		LOG_ERROR << "commaPos invalid: commaPos = " << commaPos << ", pktLen = " << pktLen;
+		return;
+	}
+
+	muduo::string moduleName(pktBuf, commaPos);
+	muduo::string logFileMapKey = moduleName.append("-").append(clientIp);
+
+	AsyncLogFilePtr logFile;
+	LogFileMap::iterator it = logFileMap_.find(logFileMapKey);
+	if (it != logFileMap_.end()) {
+		logFile = it->second;
+	}
+	else
+	{
+		muduo::string logFileName = baseDir_ + logFileMapKey;
+		logFile = AsyncLogFilePtr(new AsyncLogFile(logFileName, 500*1000*1000, 3));
+
+		AsyncLogWriterPtr usedWriter = logWriters_[rand() % logWriters_.size()];
+		logFile->attachToLogWriter(usedWriter);
+
+		logFileMap_.insert(std::make_pair(logFileMapKey, logFile));
+	}
+
+	logFile ->append(pktBuf + commaPos + 1, pktLen - commaPos - 1);
+
+	if (sendto(udpSockFD_, "RECV SUCC", 9, 0, (struct sockaddr*) &clientAddr, clientAddrLen) < 0)
+	{
+		LOG_ERROR << "sendto failed, errno: " << errno;
+	}
+}
+
 void LogReceiverServer::stop()
 {
+	logFileMap_.clear();
+
 	for (size_t i = 0; i < logWriters_.size(); ++i)
 	{
 		logWriters_[i]->stop();
 	}
 
-	logFileMap_.clear();
+	logWriters_.clear();
 
 	running_ = false;
 	thread_.join();
+}
+
+void LogReceiverServer::clearExpiredLogFile(time_t now)
+{
+	for (LogFileMap::iterator it = logFileMap_.begin(); it != logFileMap_.end(); ++it)
+	{
+		if ( (now - (it->second->getLastAppendTime())) >= kLogFileExpiredSeconds)
+		{
+			logFileMap_.erase(it);
+
+			LOG_INFO << "clear a expired log file";
+		}
+	}
 }
 

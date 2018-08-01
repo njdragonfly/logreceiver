@@ -47,11 +47,15 @@ void AsyncLogWriter::removeLogFile(size_t idxInWriter)
 
   logFiles_[idxInWriter].reset();
 
-  for (std::vector<size_t>::iterator it = pendingFlushLogFiles_.begin(); it != pendingFlushLogFiles_.end(); ++it)
+  for (std::vector<size_t>::iterator it = pendingFlushLogFiles_.begin(); it != pendingFlushLogFiles_.end();)
   {
     if (idxInWriter == *it)
     {
       it = pendingFlushLogFiles_.erase(it);
+    }
+    else
+    {
+      ++it;
     }
   }
 }

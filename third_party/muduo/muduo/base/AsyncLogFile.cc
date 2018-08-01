@@ -8,12 +8,11 @@ using namespace muduo;
 
 AsyncLogFile::AsyncLogFile(const string& basename,
                            off_t rollSize,
-                           AsyncLogWriter* writer,
                            int flushInterval)
   : flushInterval_(flushInterval),
     basename_(basename),
     rollSize_(rollSize),
-    writer_(writer),
+    writer_(),
     mutex_(),
     currentBuffer_(new Buffer),
     nextBuffer_(new Buffer),
@@ -22,7 +21,8 @@ AsyncLogFile::AsyncLogFile(const string& basename,
     newBuffer2_(new Buffer),
     output_(basename, rollSize, false),
     buffersToWrite_(),
-    lastFlushTime_(0)
+    lastFlushTime_(0),
+    lastAppendTime_(0)
 {
   currentBuffer_->bzero();
   nextBuffer_->bzero();
@@ -30,8 +30,6 @@ AsyncLogFile::AsyncLogFile(const string& basename,
   newBuffer1_->bzero();
   newBuffer2_->bzero();
   buffersToWrite_.reserve(16);
-
-  idxInWriter_ = writer_->addLogFile(shared_from_this());
 }
 
 AsyncLogFile::~AsyncLogFile()
@@ -40,8 +38,21 @@ AsyncLogFile::~AsyncLogFile()
   flush(true);
 }
 
+void AsyncLogFile::attachToLogWriter(const muduo::AsyncLogWriterPtr& writer)
+{
+  if (writer_)
+  {
+    return;
+  }
+
+  writer_ = writer;
+  idxInWriter_ = writer_->addLogFile(shared_from_this());
+}
+
 void AsyncLogFile::append(const char* logline, int len)
 {
+  lastAppendTime_ = time(NULL);
+
   muduo::MutexLockGuard lock(mutex_);
   if (currentBuffer_->avail() > len)
   {
@@ -133,3 +144,7 @@ void AsyncLogFile::flush(bool force)
   output_.flush();
 }
 
+time_t AsyncLogFile::getLastAppendTime()
+{
+  return lastAppendTime_;
+}
