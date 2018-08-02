@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include <muduo/base/Logging.h>
+#include <muduo/base/TimeZone.h>
 
 #include <LogReceiverServer.h>
 
@@ -84,6 +85,9 @@ void AskToQuit()
 
 int main(int argc, const char *argv[])
 {
+	muduo::TimeZone asiaShanghai("/usr/share/zoneinfo/Asia/Shanghai");
+	muduo::Logger::setTimeZone(asiaShanghai);
+
 	if (argc < 6)
 	{
 		LOG_ERROR << "Usage: log_receiver ip port base_dir flush_interval thread_num";
