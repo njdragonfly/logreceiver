@@ -39,8 +39,7 @@ third_party_lib: muduo_lib
 
 .PHONY:muduo_lib
 muduo_lib:
-	cmake -DCMAKE_BUILD_NO_EXAMPLES=1 $(MUDUP_ROOT_PATH)
-	make -C $(MUDUP_ROOT_PATH)
+	cd $(MUDUP_ROOT_PATH) && cmake -DCMAKE_BUILD_NO_EXAMPLES=1 . && make
 
 .PHONY:clean
 clean:
