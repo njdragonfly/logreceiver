@@ -161,6 +161,25 @@ void LogReceiverServer::process(const char* pktBuf, const int pktLen, const stru
 		return;
 	}
 
+	// 发送数据格式：
+	// {moduleName}|{needResp},logLine1\nlogLine2\n
+	muduo::string moduleName;
+	bool needResp = false;
+	muduo::string tmpHeader(pktBuf, commaPos);
+	if ( (muduo::string::size_type pos = tmpHeader.find('|')) != muduo::string::npos )
+	{
+		moduleName.assign(tmpHeader, 0, pos);
+		if (pos < tmpHeader.size() - 1)
+		{
+			muduo::string tmpNeedRespStr = tmpHeader.substr(pos + 1);
+			needResp = atoi(tmpNeedRespStr.c_str()) == 0 ? true : false;
+		}
+	}
+	else
+	{
+		moduleName = tmpHeader;
+	}
+
 	muduo::string moduleName(pktBuf, commaPos);
 	muduo::string logFileMapKey(moduleName);
 	logFileMapKey.append("-").append(clientIp);
@@ -204,9 +223,12 @@ void LogReceiverServer::process(const char* pktBuf, const int pktLen, const stru
 
 	logFile ->append(pktBuf + commaPos + 1, pktLen - commaPos - 1);
 
-	if (sendto(udpSockFD_, "RECV SUCC", 9, 0, (struct sockaddr*) &clientAddr, clientAddrLen) < 0)
+	if (needResp)
 	{
-		LOG_ERROR << "sendto failed, errno: " << errno;
+		if (sendto(udpSockFD_, "RECV SUCC", 9, 0, (struct sockaddr*) &clientAddr, clientAddrLen) < 0)
+		{
+			LOG_ERROR << "sendto failed, errno: " << errno;
+		}
 	}
 }
 
