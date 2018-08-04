@@ -173,7 +173,7 @@ void LogReceiverServer::process(const char* pktBuf, const int pktLen, const stru
 		if (pos < tmpHeader.size() - 1)
 		{
 			muduo::string tmpNeedRespStr = tmpHeader.substr(pos + 1);
-			needResp = atoi(tmpNeedRespStr.c_str()) == 0 ? true : false;
+			needResp = atoi(tmpNeedRespStr.c_str()) == 0 ? false : true;
 		}
 	}
 	else
