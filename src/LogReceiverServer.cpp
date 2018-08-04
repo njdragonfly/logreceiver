@@ -166,7 +166,8 @@ void LogReceiverServer::process(const char* pktBuf, const int pktLen, const stru
 	muduo::string moduleName;
 	bool needResp = false;
 	muduo::string tmpHeader(pktBuf, commaPos);
-	if ( (muduo::string::size_type pos = tmpHeader.find('|')) != muduo::string::npos )
+	muduo::string::size_type pos = tmpHeader.find('|');
+	if (pos != muduo::string::npos)
 	{
 		moduleName.assign(tmpHeader, 0, pos);
 		if (pos < tmpHeader.size() - 1)
@@ -180,7 +181,6 @@ void LogReceiverServer::process(const char* pktBuf, const int pktLen, const stru
 		moduleName = tmpHeader;
 	}
 
-	muduo::string moduleName(pktBuf, commaPos);
 	muduo::string logFileMapKey(moduleName);
 	logFileMapKey.append("-").append(clientIp);
 
