@@ -1,7 +1,10 @@
 CC = gcc
 CXX = g++
-CPPFLAGS = -std=c++0x -O2 -pipe -W -Wall -Wno-unused-parameter -fPIC -fno-omit-frame-pointer
-DEBUG_CXXFLAGS = -g
+CPPFLAGS = -D__const__= -D_GNU_SOURCE -DUSE_SYMBOLIZE
+CXXFLAGS = $(CPPFLAGS) -O2 -pipe -Wall -W -fPIC -fstrict-aliasing -Wno-invalid-offsetof -Wno-unused-parameter -fno-omit-frame-pointer
+CFLAGS = $(CPPFLAGS) -O2 -pipe -Wall -W -fPIC -fstrict-aliasing -Wno-unused-parameter -fno-omit-frame-pointer
+DEBUG_CXXFLAGS = $(filter-out -DNDEBUG,$(CXXFLAGS)) -DUNIT_TEST
+DEBUG_CFLAGS = $(filter-out -DNDEBUG,$(CFLAGS)) -DUNIT_TEST
 SRCEXTS = .c .cc .cpp .proto
 
 MUDUP_ROOT_PATH = ./third_party/muduo
